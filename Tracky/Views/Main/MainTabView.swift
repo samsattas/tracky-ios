@@ -2,13 +2,15 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject private var pendingStore: PendingStore
+    @EnvironmentObject private var appState: AppState
     @Environment(\.colorScheme) private var scheme
     private var C: AppColors { scheme == .dark ? .dark : .light }
 
-    @State private var selectedTab = 0
+    // Shared through AppState so views like Dashboard's "Ver todo" can switch tabs
+    private var selectedTab: Int { appState.selectedTab }
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $appState.selectedTab) {
             DashboardView()
                 .tabItem {
                     Label("Inicio", systemImage: selectedTab == 0 ? "house.fill" : "house")

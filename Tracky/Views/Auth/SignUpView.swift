@@ -211,8 +211,9 @@ struct SignUpView: View {
         loading = true; error = ""
         Task {
             do {
-                let (token, userId) = try await ClerkService.shared.attemptVerification(signUpId: signUpId, code: code)
-                session.signIn(token: token, userId: userId)
+                let (token, userId, clerkFirstName) = try await ClerkService.shared.attemptVerification(signUpId: signUpId, code: code)
+                let typedFirstName = name.trimmingCharacters(in: .whitespaces).components(separatedBy: " ").first
+                session.signIn(token: token, userId: userId, firstName: clerkFirstName ?? typedFirstName)
                 appState.needsOnboarding = true
             } catch {
                 self.error = error.localizedDescription

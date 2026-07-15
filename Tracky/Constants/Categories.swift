@@ -71,6 +71,11 @@ private let hueColorMap: [Double: (bg: String, fg: String, dot: String)] = [
     340: (bg: "#fde6f0", fg: "#981048", dot: "#d83880"),
 ]
 
+// Hex string of the dot color, for models that carry colors as strings (e.g. CatShare)
+func hueToDotHex(_ hue: Double) -> String {
+    hueColorMap[hue]?.dot ?? "#7080c8"
+}
+
 func hueToColor(_ hue: Double) -> CategoryColors {
     if let c = hueColorMap[hue] {
         return CategoryColors(bg: Color(hex: c.bg), fg: Color(hex: c.fg), dot: Color(hex: c.dot))
@@ -82,6 +87,7 @@ extension CategoryId {
     var meta: CategoryMeta { CATEGORIES[self] ?? CategoryMeta(name: rawValue, hue: 220, icon: "tag.fill") }
     var colors: CategoryColors { hueToColor(meta.hue) }
     var dotColor: Color { colors.dot }
+    var dotHex: String { hueToDotHex(meta.hue) }
 }
 
 extension String {

@@ -12,6 +12,11 @@ struct SignInView: View {
     @State private var showPass = false
     @State private var loading  = false
     @State private var error    = ""
+    // Second factor (new-device verification): non-nil while waiting for the email code
+    @State private var signInId = ""
+    @State private var code     = ""
+
+    private var needsCode: Bool { !signInId.isEmpty }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -30,22 +35,36 @@ struct SignInView: View {
                     .foregroundColor(C.textMuted)
                     .padding(.bottom, 4)
 
-                // Google button
-                googleButton
+                if needsCode {
+                    // Second factor: email code sent to verify this device
+                    Text("Te enviamos un código a \(email)")
+                        .font(.system(size: 13))
+                        .foregroundColor(C.textMuted)
 
-                divider
+                    inputField(
+                        icon: "key.fill",
+                        placeholder: "Código de 6 dígitos",
+                        text: $code,
+                        keyboard: .numberPad
+                    )
+                } else {
+                    // Google button
+                    googleButton
 
-                // Email field
-                inputField(
-                    icon: "envelope.fill",
-                    placeholder: "tu@email.com",
-                    text: $email,
-                    keyboard: .emailAddress,
-                    autoCapitalize: .never
-                )
+                    divider
 
-                // Password field
-                passwordField
+                    // Email field
+                    inputField(
+                        icon: "envelope.fill",
+                        placeholder: "tu@email.com",
+                        text: $email,
+                        keyboard: .emailAddress,
+                        autoCapitalize: .never
+                    )
+
+                    // Password field
+                    passwordField
+                }
 
                 if !error.isEmpty {
                     Text(error)
@@ -53,14 +72,14 @@ struct SignInView: View {
                         .foregroundColor(C.expense)
                 }
 
-                // Sign in button
-                Button(action: handleSignIn) {
+                // Sign in / verify button
+                Button(action: needsCode ? handleVerifyCode : handleSignIn) {
                     HStack {
                         Spacer()
                         if loading {
                             ProgressView().tint(.white)
                         } else {
-                            Text("Ingresar")
+                            Text(needsCode ? "Verificar" : "Ingresar")
                                 .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(C.primaryFg)
                         }
@@ -181,8 +200,28 @@ struct SignInView: View {
         loading = true; error = ""
         Task {
             do {
-                let (token, userId) = try await ClerkService.shared.signIn(email: email, password: password)
-                session.signIn(token: token, userId: userId)
+                switch try await ClerkService.shared.signIn(email: email, password: password) {
+                case .complete(let token, let userId, let firstName):
+                    session.signIn(token: token, userId: userId, firstName: firstName)
+                case .needsSecondFactor(let id):
+                    // New device: Clerk requires an email code — send it and show the code field
+                    try await ClerkService.shared.prepareSecondFactor(signInId: id)
+                    signInId = id
+                }
+            } catch {
+                self.error = error.localizedDescription
+            }
+            loading = false
+        }
+    }
+
+    private func handleVerifyCode() {
+        guard !code.isEmpty else { error = "Ingresa el código"; return }
+        loading = true; error = ""
+        Task {
+            do {
+                let (token, userId, firstName) = try await ClerkService.shared.attemptSecondFactor(signInId: signInId, code: code)
+                session.signIn(token: token, userId: userId, firstName: firstName)
             } catch {
                 self.error = error.localizedDescription
             }

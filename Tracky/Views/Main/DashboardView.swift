@@ -4,15 +4,18 @@ struct DashboardView: View {
     @EnvironmentObject var pendingStore: PendingStore
     @EnvironmentObject var historyStore: HistoryStore
     @EnvironmentObject var accountStore: AccountStore
+    @EnvironmentObject var appState: AppState
+    @EnvironmentObject var session: SessionStore
     @Environment(\.colorScheme) private var scheme
     private var C: AppColors { scheme == .dark ? .dark : .light }
 
-    private var income:   Double { historyStore.income }
-    private var expenses: Double { historyStore.expenses }
-    private var balance:  Double { historyStore.balance }
+    // Current-month figures — the hero card is "Balance del mes"
+    private var income:   Double { historyStore.monthIncome }
+    private var expenses: Double { historyStore.monthExpenses }
+    private var balance:  Double { historyStore.monthBalance }
     private var accounts: [Account] { accountStore.items }
-    private let catShare  = MOCK_CAT_SHARE   // TODO: compute from real history
-    private let trend     = MOCK_TREND        // TODO: compute from real history
+    private var catShare: [CatShare]   { historyStore.catShare }
+    private var trend:    [TrendPoint] { historyStore.trend }
     private let merchants = MOCK_MERCHANTS    // TODO: compute from real history
 
     var body: some View {
@@ -60,7 +63,9 @@ struct DashboardView: View {
                     HStack {
                         sectionTitleView("Recientes")
                         Spacer()
-                        NavigationLink(destination: HistoryView()) {
+                        Button {
+                            appState.selectedTab = 2   // switch to the Historial tab
+                        } label: {
                             Text("Ver todo")
                                 .font(.system(size: 11.5, weight: .semibold))
                                 .foregroundColor(C.primary)
@@ -75,12 +80,10 @@ struct DashboardView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .principal) {
-                    VStack(spacing: 1) {
-                        Text("Hola")
-                            .font(.system(size: 24, weight: .heavy))
-                            .foregroundColor(C.text)
-                    }
+                ToolbarItem(placement: .topBarLeading) {
+                    Text(session.firstName.map { "Hola \($0)" } ?? "Hola")
+                        .font(.system(size: 24, weight: .heavy))
+                        .foregroundColor(C.text)
                 }
             }
         }
